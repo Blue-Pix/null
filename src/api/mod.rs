@@ -30,7 +30,7 @@ pub struct Tweet {
 // }
 
 #[tokio::main]
-pub async fn get_tweets<'a>(screen_name: &str, max_id: Option<u64>) -> Result<Vec<Tweet>> {
+pub async fn get_tweets(screen_name: &str, max_id: Option<u64>) -> Result<Vec<Tweet>> {
   let mut params = vec![
     ("screen_name", screen_name), 
     ("include_rts", "false"), 
