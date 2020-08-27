@@ -1,17 +1,9 @@
 use std::env;
 
-use error_chain::error_chain;
+use anyhow::Result;
 use reqwest::Client;
 use serde::Deserialize;
 use url::Url;
-
-error_chain! {
-  foreign_links {
-    HttpRequest(reqwest::Error);
-    Url(url::ParseError);
-    Var(env::VarError);
-  }
-}
 
 #[derive(Deserialize, Debug)]
 pub struct Tweet {
