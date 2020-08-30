@@ -1,5 +1,6 @@
 use std::env;
 use std::fs;
+use std::io::ErrorKind;
 use std::str;
 
 use anyhow::{anyhow, Result};
@@ -18,9 +19,8 @@ impl Config {
   pub fn new(filename: Option<&str>) -> Result<Self> {
     let mut config = Self { screen_name: String::new(), token: String::new() };
     let content = match filename {
-      // [ToDo] handle error around file
-      Some(filename) => fs::read_to_string(filename)?,
-      None => fs::read_to_string(ENV_FILE)?
+      Some(filename) => read_env_file(filename)?,
+      None => read_env_file(ENV_FILE)?
     };
     content.lines().for_each(|line| {
       let entries: Vec<_> = line.split("=").map(str::trim).collect();
@@ -59,6 +59,17 @@ impl Config {
       return Err(anyhow!("Please specify {} as twitter api token in .env file or as environment variable.", TOKEN_KEY))
     }
     Ok(())
+  }
+}
+
+fn read_env_file(filename: &str) -> Result<String> {
+  match fs::read_to_string(filename) {
+    Ok(content) => return Ok(content),
+    Err(ref e) if e.kind() == ErrorKind::NotFound => {
+      // do nothing
+      return Ok(String::new());
+    },
+    Err(e) => return Err(anyhow!(e))
   }
 }
 
@@ -130,5 +141,26 @@ mod tests {
     env::set_var(NAME_KEY, "c");
 
     Config::new(Some(".env.test.none")).unwrap();
+  }
+
+  #[test]
+  fn missing_env_file() {
+    setup();
+    env::set_var(NAME_KEY, "c");
+    env::set_var(TOKEN_KEY, "d");
+
+    let expected = Config {
+      screen_name: String::from("c"),
+      token: String::from("d"),
+    };
+    let actual = Config::new(Some("no_such_file")).unwrap();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  #[should_panic(expected = "Is a directory (os error 21)")]
+  fn unexpected_error_when_read_env_file() {
+    setup();
+    Config::new(Some("target")).unwrap();
   }
 }
