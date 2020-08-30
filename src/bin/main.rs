@@ -1,7 +1,8 @@
 extern crate null;
+use null::config::Config;
 
 fn main() {
-    let config = null::config::initialize().unwrap();
+    let config = Config::new(None).unwrap();
     let mut max_id = None;
     for _ in 0..3 {
         let tweets = null::api::get_tweets(&config, max_id).unwrap();
