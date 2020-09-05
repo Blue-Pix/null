@@ -17,18 +17,38 @@ pub struct RequstToken {
   oauth_callback_confirmed: String,
 }
 
-#[tokio::main]
-pub async fn get_request_token() -> String {
+impl RequstToken {
+  fn from_response(response: String) -> Self {
+    let mut map = HashMap::new();
+    response
+      .split('&')
+      .collect::<Vec<_>>()
+      .into_iter()
+      .for_each(|pair| {
+        let v = pair.split('=').collect::<Vec<_>>();
+        map.insert(v[0], v[1]);
+      });
+
+    Self {
+      oauth_token: map.get("oauth_token").unwrap().to_string(),
+      oauth_token_secret: map.get("oauth_token_secret").unwrap().to_string(),
+      oauth_callback_confirmed: map.get("oauth_callback_confirmed").unwrap().to_string(),
+    }
+  }
+}
+
+pub async fn get_request_token() -> RequstToken {
   let url = "https://api.twitter.com/oauth/request_token";
   let mut headers = HeaderMap::new();
-  headers.insert(AUTHORIZATION, create_auth_header(url).parse().unwrap());
+  headers.insert(AUTHORIZATION, create_get_request_token_header(url).parse().unwrap());
   headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/x-www-form-urlencoded"));
 
   let client = Client::new();
-  client.post(url).headers(headers).send().await.unwrap().text().await.unwrap()
+  let res = client.post(url).headers(headers).send().await.unwrap().text().await.unwrap();
+  RequstToken::from_response(res)
 }
 
-fn create_auth_header(url: &str) -> String {
+fn create_get_request_token_header(url: &str) -> String {
   let consumer_key = from_env("CONSUMER_KEY");
   let consumer_secret = from_env("CONSUMER_SECRET");
   let timestamp = Utc::now().timestamp().to_string();
@@ -52,6 +72,35 @@ fn create_auth_header(url: &str) -> String {
     encode(params.get("oauth_consumer_key").unwrap()),
     encode(&signature),
     encode(params.get("oauth_version").unwrap()),
+  )
+}
+
+pub fn create_oauth1_header(url: &str) -> String {
+  let consumer_key = from_env("CONSUMER_KEY");
+  let consumer_secret = from_env("CONSUMER_SECRET");
+  let access_token = from_env("ACCESS_TOKEN");
+  let access_secret = from_env("ACCESS_SECRET");
+  
+  let timestamp = Utc::now().timestamp().to_string();
+
+  let mut params: HashMap<&str, &str> = HashMap::new();
+  params.insert("oauth_consumer_key", &consumer_key);
+  params.insert("oauth_nonce", &timestamp);
+  params.insert("oauth_signature_method", OAUTH_SIGN_METHOD);
+  params.insert("oauth_timestamp", &timestamp);
+  params.insert("oauth_version", OAUTH_VERSION);
+  params.insert("oauth_token", &access_token);
+  
+  let signature = create_oauth_signature("POST", url, &consumer_secret, &access_secret, &params);
+  format!(
+    r#"OAuth oauth_nonce="{}", oauth_signature_method="{}", oauth_timestamp="{}", oauth_consumer_key="{}", oauth_signature="{}", oauth_version="{}", oauth_token="{}""#,
+    encode(params.get("oauth_nonce").unwrap()),
+    encode(params.get("oauth_signature_method").unwrap()),
+    encode(params.get("oauth_timestamp").unwrap()),
+    encode(params.get("oauth_consumer_key").unwrap()),
+    encode(&signature),
+    encode(params.get("oauth_version").unwrap()),
+    encode(&access_token),
   )
 }
 
