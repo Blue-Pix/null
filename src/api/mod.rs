@@ -63,7 +63,7 @@ pub async fn get_retweeted_tweets(config: &Config, max_id: Option<u64>) -> Resul
 
 pub async fn delete_tweet(config: &Config, id: u64) -> Result<Tweet> {
   let url = format!("https://api.twitter.com/1.1/statuses/destroy/{}.json", id.to_string());
-  let header = oauth::create_oauth1_header(&url);
+  let header = oauth::create_oauth1_header(&config, &url);
   let mut headers = HeaderMap::new();
   headers.insert(AUTHORIZATION, header.parse().unwrap());
   headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/x-www-form-urlencoded"));
@@ -76,7 +76,7 @@ pub async fn delete_tweet(config: &Config, id: u64) -> Result<Tweet> {
 
 pub async fn unretweet(config: &Config, id: u64) -> Result<Tweet> {
   let url = format!("https://api.twitter.com/1.1/statuses/unretweet/{}.json", id.to_string());
-  let header = oauth::create_oauth1_header(&url);
+  let header = oauth::create_oauth1_header(&config, &url);
   let mut headers = HeaderMap::new();
   headers.insert(AUTHORIZATION, header.parse().unwrap());
   headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/x-www-form-urlencoded"));

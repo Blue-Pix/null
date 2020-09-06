@@ -9,15 +9,30 @@ use anyhow::{anyhow, Result};
 pub struct Config {
   pub screen_name: String,
   pub token: String,
+  pub api_key: String,
+  pub api_secret: String,
+  pub access_token: String,
+  pub access_secret: String,
 }
 
 const ENV_FILE: &str = ".env"; 
 const NAME_KEY: &str = "TW_NAME";
 const TOKEN_KEY: &str = "TW_TOKEN";
+const API_KEY: &str = "API_KEY";
+const API_SECRET: &str = "API_SECRET";
+const ACCESS_TOKEN: &str = "ACCESS_TOKEN";
+const ACCESS_SECRET: &str = "ACCESS_SECRET";
 
 impl Config {
   pub fn new(filename: Option<&str>) -> Result<Self> {
-    let mut config = Self { screen_name: String::new(), token: String::new() };
+    let mut config = Self { 
+      screen_name: String::new(), 
+      token: String::new(),
+      api_key: String::new(),
+      api_secret: String::new(),
+      access_token: String::new(),
+      access_secret: String::new(),
+    };
     let content = match filename {
       Some(filename) => read_env_file(filename)?,
       None => read_env_file(ENV_FILE)?
@@ -48,6 +63,22 @@ impl Config {
       Ok(token) => self.token = token,
       Err(_) => {},
     }
+    match env::var(API_KEY) {
+      Ok(api_key) => self.api_key = api_key,
+      Err(_) => {},
+    }
+    match env::var(API_SECRET) {
+      Ok(api_secret) => self.api_secret = api_secret,
+      Err(_) => {},
+    }
+    match env::var(ACCESS_TOKEN) {
+      Ok(access_token) => self.access_token = access_token,
+      Err(_) => {},
+    }
+    match env::var(ACCESS_SECRET) {
+      Ok(access_secret) => self.access_secret = access_secret,
+      Err(_) => {},
+    }
     Ok(self)
   }
 
@@ -57,6 +88,18 @@ impl Config {
     }
     if self.token.is_empty() {
       return Err(anyhow!("Please specify {} as twitter api token in .env file or as environment variable.", TOKEN_KEY))
+    }
+    if self.api_key.is_empty() {
+      return Err(anyhow!("API_KEY is missing."));
+    }
+    if self.api_secret.is_empty() {
+      return Err(anyhow!("API_SECRET is missing."));
+    }
+    if self.access_token.is_empty() {
+      return Err(anyhow!("ACCESS_TOKEN is missing."));
+    }
+    if self.access_secret.is_empty() {
+      return Err(anyhow!("ACCESS_SECRET is missing."));
     }
     Ok(())
   }
@@ -92,6 +135,10 @@ mod tests {
     let expected = Config {
       screen_name: String::from("a"),
       token: String::from("b"),
+      api_key: String::from("z"),
+      api_secret: String::from("z"),
+      access_token: String::from("z"),
+      access_secret: String::from("z"),
     };
     let actual = Config::new(Some(".env.test")).unwrap();
     assert_eq!(expected, actual);
@@ -106,6 +153,10 @@ mod tests {
     let expected = Config {
       screen_name: String::from("c"),
       token: String::from("d"),
+      api_key: String::from("z"),
+      api_secret: String::from("z"),
+      access_token: String::from("z"),
+      access_secret: String::from("z"),
     };
     let actual = Config::new(Some(".env.test.none")).unwrap();
     assert_eq!(expected, actual);
@@ -120,6 +171,10 @@ mod tests {
     let expected = Config {
       screen_name: String::from("c"),
       token: String::from("d"),
+      api_key: String::from("z"),
+      api_secret: String::from("z"),
+      access_token: String::from("z"),
+      access_secret: String::from("z"),
     };
     let actual = Config::new(Some(".env.test")).unwrap();
     assert_eq!(expected, actual);
@@ -152,6 +207,10 @@ mod tests {
     let expected = Config {
       screen_name: String::from("c"),
       token: String::from("d"),
+      api_key: String::from("z"),
+      api_secret: String::from("z"),
+      access_token: String::from("z"),
+      access_secret: String::from("z"),
     };
     let actual = Config::new(Some("no_such_file")).unwrap();
     assert_eq!(expected, actual);

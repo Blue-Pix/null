@@ -6,6 +6,8 @@ use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC, PercentE
 use reqwest::{Client};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 
+use super::config::Config;
+
 const FRAGMENT: &AsciiSet = &NON_ALPHANUMERIC.remove(b'~').remove(b'-').remove(b'.').remove(b'_');
 const OAUTH_VERSION: &str = "1.0";
 const OAUTH_SIGN_METHOD: &str = "HMAC-SHA1";
@@ -37,10 +39,10 @@ impl RequstToken {
   }
 }
 
-pub async fn get_request_token() -> RequstToken {
+pub async fn get_request_token(config: &Config) -> RequstToken {
   let url = "https://api.twitter.com/oauth/request_token";
   let mut headers = HeaderMap::new();
-  headers.insert(AUTHORIZATION, create_get_request_token_header(url).parse().unwrap());
+  headers.insert(AUTHORIZATION, create_get_request_token_header(config, url).parse().unwrap());
   headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/x-www-form-urlencoded"));
 
   let client = Client::new();
@@ -48,21 +50,19 @@ pub async fn get_request_token() -> RequstToken {
   RequstToken::from_response(res)
 }
 
-fn create_get_request_token_header(url: &str) -> String {
-  let consumer_key = from_env("CONSUMER_KEY");
-  let consumer_secret = from_env("CONSUMER_SECRET");
+fn create_get_request_token_header(config: &Config, url: &str) -> String {
   let timestamp = Utc::now().timestamp().to_string();
   let callback = "";
 
   let mut params: HashMap<&str, &str> = HashMap::new();
-  params.insert("oauth_consumer_key", &consumer_key);
+  params.insert("oauth_consumer_key", &config.api_key);
   params.insert("oauth_nonce", &timestamp);
   params.insert("oauth_signature_method", OAUTH_SIGN_METHOD);
   params.insert("oauth_timestamp", &timestamp);
   params.insert("oauth_version", OAUTH_VERSION);
   params.insert("oauth_callback", callback);
   
-  let signature = create_oauth_signature("POST", url, &consumer_secret, "", &params);
+  let signature = create_oauth_signature("POST", url, &config.api_secret, "", &params);
   format!(
     r#"OAuth oauth_nonce="{}", oauth_callback="{}", oauth_signature_method="{}", oauth_timestamp="{}", oauth_consumer_key="{}", oauth_signature="{}", oauth_version="{}""#,
     encode(params.get("oauth_nonce").unwrap()),
@@ -75,23 +75,18 @@ fn create_get_request_token_header(url: &str) -> String {
   )
 }
 
-pub fn create_oauth1_header(url: &str) -> String {
-  let consumer_key = from_env("CONSUMER_KEY");
-  let consumer_secret = from_env("CONSUMER_SECRET");
-  let access_token = from_env("ACCESS_TOKEN");
-  let access_secret = from_env("ACCESS_SECRET");
-  
+pub fn create_oauth1_header(config: &Config, url: &str) -> String {
   let timestamp = Utc::now().timestamp().to_string();
 
   let mut params: HashMap<&str, &str> = HashMap::new();
-  params.insert("oauth_consumer_key", &consumer_key);
+  params.insert("oauth_consumer_key", &config.api_key);
   params.insert("oauth_nonce", &timestamp);
   params.insert("oauth_signature_method", OAUTH_SIGN_METHOD);
   params.insert("oauth_timestamp", &timestamp);
   params.insert("oauth_version", OAUTH_VERSION);
-  params.insert("oauth_token", &access_token);
+  params.insert("oauth_token", &config.access_token);
   
-  let signature = create_oauth_signature("POST", url, &consumer_secret, &access_secret, &params);
+  let signature = create_oauth_signature("POST", url, &config.api_secret, &config.access_secret, &params);
   format!(
     r#"OAuth oauth_nonce="{}", oauth_signature_method="{}", oauth_timestamp="{}", oauth_consumer_key="{}", oauth_signature="{}", oauth_version="{}", oauth_token="{}""#,
     encode(params.get("oauth_nonce").unwrap()),
@@ -100,18 +95,8 @@ pub fn create_oauth1_header(url: &str) -> String {
     encode(params.get("oauth_consumer_key").unwrap()),
     encode(&signature),
     encode(params.get("oauth_version").unwrap()),
-    encode(&access_token),
+    encode(&config.access_token),
   )
-}
-
-fn from_env(name: &str) -> String {
-  match std::env::var(name) {
-      Ok(val) => val,
-      Err(err) => {
-          println!("{}: {}", err, name);
-          std::process::exit(1);
-      }
-  }
 }
 
 fn create_oauth_signature(
