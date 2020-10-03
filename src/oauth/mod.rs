@@ -75,7 +75,7 @@ fn create_get_request_token_header(config: &Config, url: &str) -> String {
   )
 }
 
-pub fn create_oauth1_header(config: &Config, url: &str) -> String {
+pub fn create_oauth1_header(config: &Config, url: &str, other_params: &Vec<(&str, &str)>) -> String {
   let timestamp = Utc::now().timestamp().to_string();
 
   let mut params: HashMap<&str, &str> = HashMap::new();
@@ -85,6 +85,9 @@ pub fn create_oauth1_header(config: &Config, url: &str) -> String {
   params.insert("oauth_timestamp", &timestamp);
   params.insert("oauth_version", OAUTH_VERSION);
   params.insert("oauth_token", &config.access_token);
+  for (k, v) in other_params {
+    params.insert(k, v);
+  }
   
   let signature = create_oauth_signature("POST", url, &config.api_secret, &config.access_secret, &params);
   format!(
@@ -130,7 +133,7 @@ fn create_signature_data(
   params.sort();
   let params = params
     .into_iter()
-    .map(|(k, v)| format!("{}={}", k, v))
+    .map(|(k, v)| format!("{}={}", encode(k), encode(v)))
     .collect::<Vec<String>>()
     .join("&");
 

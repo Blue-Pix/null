@@ -45,6 +45,10 @@ impl Config {
         match key {
           NAME_KEY => config.screen_name = val,
           TOKEN_KEY => config.token = val,
+          API_KEY => config.api_key = val,
+          API_SECRET => config.api_secret = val,
+          ACCESS_TOKEN => config.access_token = val,
+          ACCESS_SECRET => config.access_secret = val,
           _ => {},
         }
       }
